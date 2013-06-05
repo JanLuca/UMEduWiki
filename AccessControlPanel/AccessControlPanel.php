@@ -27,9 +27,9 @@ if (!defined('MEDIAWIKI')) {
 	die( 1 );
 }
 
-$wgExtensionCredits['specialpage'][] = array( 
-	'name' => 'Access Control Panel', 
-	'author' => 'Aleksandar Bojinovic, Peter Kin-Fong Fong', 
+$wgExtensionCredits['specialpage'][] = array(
+	'name' => 'Access Control Panel',
+	'author' => 'Aleksandar Bojinovic, Peter Kin-Fong Fong',
 	'description' => 'Control access rights of custom defined groups',
 	'version' => '1.1',
 	'url' => 'http://www.mediawiki.org/wiki/Extension:Access_Control_Panel'
@@ -49,23 +49,23 @@ $wgHooks['LoadExtensionSchemaUpdates'][] = 'wfAccessControlPanelDatabaseSetup';
 $wgExtensionFunctions[] = 'wfAccessControlPanelSetup';
 
 /**
- * Creates tables for access control setting, if the tables do not 
+ * Creates tables for access control setting, if the tables do not
  * exist. Executed when running update.php
  */
 function wfAccessControlPanelDatabaseSetup( $updater = null ) {
 	$dir = dirname( __FILE__ );
-	
+
 	if ( $updater === null ) {
         // <= 1.16 support
         global $wgExtNewTables;
-        	
+
         $wgExtNewTables[] = array( 'tw_groups',
         	$dir . '/patches/AccessControlPanel.Groups.sql' );
         $wgExtNewTables[] = array( 'tw_namespaces',
         	$dir . '/patches/AccessControlPanel.Namespaces.sql' );
         $wgExtNewTables[] = array( 'tw_privileges',
         	$dir . '/patches/AccessControlPanel.Privileges.sql' );
-        
+
 	} else {
         // >= 1.17 support
         $updater->addExtensionUpdate( array( 'addTable', 'tw_groups',
@@ -75,29 +75,30 @@ function wfAccessControlPanelDatabaseSetup( $updater = null ) {
         $updater->addExtensionUpdate( array( 'addTable', 'tw_privileges',
         	$dir . '/patches/AccessControlPanel.Privileges.sql', true ) );
 	}
-	
+
 	return true;
 }
 
-/** 
+/**
  * Initialize access control settings.
  */
 function wfAccessControlPanelSetup() {
-	global	$wgGroupPermissions, 
-			$wgExtraNamespaces, 
+	global	$wgGroupPermissions,
+			$wgExtraNamespaces,
 			$wgNamespacePermissionLockdown,
-			$wgAccessControlPanelAllowedGroup;
+			$wgAccessControlPanelAllowedGroup,
+			$wgLang, $wgContLang;
 
 	$dbr = wfGetDB( DB_SLAVE );
-	
+
 	/* Check the existence of the necessary tables */
-	if ( !$dbr->tableExists('tw_groups') || 
+	if ( !$dbr->tableExists('tw_groups') ||
 		 !$dbr->tableExists('tw_namespaces') ||
 		 !$dbr->tableExists('tw_privileges') ) {
 		/* If one of table does not exist, terminate */
 		return;
 	}
-	
+
 	/* Selecting GROUPS */
 	$myGroups = $dbr->select('tw_groups', 'tw_grp_name');
 
@@ -105,39 +106,46 @@ function wfAccessControlPanelSetup() {
 		$groupName = $row->tw_grp_name;
 		$wgGroupPermissions[$groupName]['read'] = true;
 	}
-	
 
 	/* Selecting NAMESPACES */
 	$myNamespaces = $dbr->select('tw_namespaces', '*');
-	
+
 	foreach ($myNamespaces as $row) {
-		
 		$nsNumber = intval( $row->tw_ns_number );
 		$nsName = $row->tw_ns_name;
-		
+
 		$wgExtraNamespaces[$nsNumber] = $nsName;
-		
+
 		/* Block read and edit actions from any user (except admin and allowed group) */
 		$wgNamespacePermissionLockdown[$nsNumber]['read'] = array('sysop', $wgAccessControlPanelAllowedGroup);
 		$wgNamespacePermissionLockdown[$nsNumber]['edit'] = array('sysop', $wgAccessControlPanelAllowedGroup);
 	}
 
-		
+	// Rebuild namespace caches
+	MWNamespace::getCanonicalNamespaces(true);
+	if (method_exists($wgLang, 'resetNamespaces')) {
+		$wgLang->resetNamespaces();
+		$wgContLang->resetNamespaces();
+	} else {
+		$wgLang->setNamespaces($wgLang->getNamespaces() + $wgExtraNamespaces);
+		$wgContLang->setNamespaces($wgContLang->getNamespaces() + $wgExtraNamespaces);
+	}
+
 	/* Assigning PRIVILEGES */
 	$myPrivileges = $dbr->select('tw_privileges', '*');
-	
+
 	foreach ($myPrivileges as $row) {
-		
+
 		$nsNumber = intval( $row->tw_ns_number );
 		$privilege = $row->tw_privilege;
 		$group = $row->tw_priv_group;
-		
+
 		if ( !isset($wgNamespacePermissionLockdown[$nsNumber][$privilege]) ) {
 			$wgNamespacePermissionLockdown[$nsNumber][$privilege] = array( $group );
 		} else {
 			$wgNamespacePermissionLockdown[$nsNumber][$privilege][] = $group;
 		}
-		
+
 	}
 }
 

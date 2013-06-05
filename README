@@ -1,3 +1,5 @@
+This repo is a fork of https://sourceforge.net/projects/umeduwiki/ (r13).
+
 == About UMEduWiki ==
 
 UMEduWiki is a package of MediaWiki extensions, that customizes the wiki software for group based learning. The package begins its life at University of Macau, as a teaching environment for translation courses. The package contains an access log extension, a group-based access control extension, and two extensions developed by other developers: an inline mp3 player and Lockdown, with simplified installation procedure.

@@ -143,7 +143,7 @@ class AccessControlPanel extends SpecialPage {
 		# Then I insert the namespace name
 		# As for now, group name = namespace name
 
-		$result = $dbw->selectRow('tw_namespaces', array('maxnsnum' => 'MAX(tw_ns_number)'), '', __METHOD__);
+		$result = $dbw->selectRow('tw_namespaces', array('MAX(tw_ns_number) AS maxnsnum'), '', __METHOD__);
 
 		$existing_namespaces = MWNamespace::getCanonicalNamespaces();
 		if ($result !== false) {
